@@ -11,24 +11,22 @@ namespace Multiplayer.API
     {
         public NetworkObject()
         {
-            NetworkId = NetworkHandler.RegisterNetworkObject(this).ToString();
+            NetworkId = NetworkHandler.RegisterNetworkObject<M>().ToString();
         }
 
         public static string ClassTag => typeof(M).Name;
 
         public string NetworkId { get; private set; }
 
-        public void Invoke<T, P>(Func<T, P> func, T argument) where P : Payload => NetworkHandler.Send(ClassTag, NetworkId, func.Method.Name, func(argument));
+        public void Invoke<T>(Action<T> action, T argument) where T : Payload => NetworkHandler.Invoke(ClassTag, NetworkId, action, argument);
 
-        public void Register<T>(NetworkMode mode, Func<T, T> func) where T : Payload => Register(mode, func, p => p);
-
-        public void Register<T, P>(NetworkMode mode, Func<T, P> func, Func<P, T> toArgument) where P : Payload
+        public void Register<T>(NetworkMode mode, Action<T> action) where T : Payload
         {
-            NetworkHandler.Register(mode, ClassTag, NetworkId, func.Method.Name, p =>
+            NetworkHandler.Register(mode, ClassTag, NetworkId, action.Method.Name, p =>
              {
-                 if (FromJson<P>(p, out var payload))
+                 if (FromJson<T>(p, out var payload))
                  {
-                     func(toArgument(payload));
+                     action(payload);
                  }
              });
         }

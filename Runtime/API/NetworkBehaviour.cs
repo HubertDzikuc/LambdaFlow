@@ -7,33 +7,60 @@ using UnityEngine;
 
 namespace Multiplayer.API
 {
-    public abstract class NetworkBehaviour<M> : MonoBehaviour, IDisposable where M : MonoBehaviour
+    public class NetworkBehaviour<M> : IDisposable where M : MonoBehaviour
     {
         private NetworkObject<M> networkObject;
         private NetworkTransform<M> networkTransform;
         private NetworkRigidbody2D<M> networkRigidbody2D;
 
-        protected void Register<T>(NetworkMode mode, Func<T, T> func) where T : Payload => networkObject.Register(mode, func);
-        protected void Register<T, P>(NetworkMode mode, Func<T, P> func, Func<P, T> toArgument) where P : Payload => networkObject.Register(mode, func, toArgument);
-        protected void Invoke<T, P>(Func<T, P> func, T argument) where P : Payload => networkObject.Invoke(func, argument);
+        public void Register<T>(NetworkMode mode, Action<T> action) where T : Payload => networkObject.Register(mode, action);
+        public void Invoke<T>(Action<T> action, T argument) where T : Payload => networkObject.Invoke(action, argument);
 
-        protected abstract void Register();
-
-        protected virtual void Start()
+        /// <summary>
+        /// Remember to invoke it only during/after Start
+        /// </summary>
+        public NetworkBehaviour()
         {
             networkObject = new NetworkObject<M>();
-            networkTransform = new NetworkTransform<M>(transform);
-            networkRigidbody2D = new NetworkRigidbody2D<M>(GetComponent<Rigidbody2D>());
-            Register();
         }
 
-        protected virtual void Update()
+        /// <summary>
+        /// Remember to invoke it only during/after Start
+        /// </summary>
+        public NetworkBehaviour(Transform transform)
         {
-            networkTransform.Update();
-            networkRigidbody2D.Update();
+            networkObject = new NetworkObject<M>();
+
+            if (transform != null)
+            {
+                networkTransform = new NetworkTransform<M>(transform);
+            }
         }
 
-        protected virtual void OnDestroy()
+        /// <summary>
+        /// Remember to invoke it only during/after Start
+        /// </summary>
+        public NetworkBehaviour(Transform transform, Rigidbody2D rigidbody)
+        {
+            networkObject = new NetworkObject<M>();
+
+            if (transform != null)
+            {
+                networkTransform = new NetworkTransform<M>(transform);
+            }
+            if (rigidbody != null)
+            {
+                networkRigidbody2D = new NetworkRigidbody2D<M>(rigidbody);
+            }
+        }
+
+        public void Update()
+        {
+            networkTransform?.Update();
+            networkRigidbody2D?.Update();
+        }
+
+        public void OnDestroy()
         {
             Dispose();
         }

@@ -50,14 +50,13 @@ namespace Multiplayer.API
             }
         }
 
-        private Rigidbody2DPayload UpdateRigidbodyData(Rigidbody2DPayload payload)
+        private void UpdateRigidbodyData(Rigidbody2DPayload payload)
         {
             if (NetworkHandler.CurrentMode == NetworkMode.Client)
             {
                 rigidbody.angularVelocity = payload.AngularVelocity;
                 rigidbody.velocity = payload.Velocity;
             }
-            return payload;
         }
     }
 }

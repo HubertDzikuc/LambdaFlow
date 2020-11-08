@@ -60,14 +60,13 @@ namespace Multiplayer.API
             }
         }
 
-        private TransformPayload UpdateTransformData(TransformPayload payload)
+        private void UpdateTransformData(TransformPayload payload)
         {
             if (NetworkHandler.CurrentMode == NetworkMode.Client)
             {
                 transform.position = payload.Position;
                 transform.rotation = payload.Rotation;
             }
-            return payload;
         }
     }
 }

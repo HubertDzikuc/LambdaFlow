@@ -2,8 +2,10 @@
 
 namespace Multiplayer.API
 {
-    public class TestBehaviour : NetworkBehaviour<TestBehaviour>
+    public class TestBehaviour : NetworkMonoBehaviour<TestBehaviour>
     {
+        protected override Rigidbody2D Rigidbody2D => GetComponent<Rigidbody2D>();
+
         public class TestPayload : Payload
         {
             public string text = "dabdafjaf";
@@ -18,26 +20,17 @@ namespace Multiplayer.API
 
         private int i = 0;
 
-        public void SendTest(string msg) => Invoke(InternalSendTest, msg);
-        public void SendTestPayload(TestPayload payload) => Invoke(InternalSendTestPayload, payload);
+        public void SendTest(TestPayload payload) => Invoke(InternalSendPayload, payload);
 
-        private TestPayload InternalSendTest(string testText)
+        private void InternalSendPayload(TestPayload payload)
         {
-            Debug.Log($"{nameof(InternalSendTest)} {testText}");
-            return new TestPayload(testText);
-        }
-
-        private TestPayload InternalSendTestPayload(TestPayload payload)
-        {
-            Debug.Log($"{nameof(InternalSendTestPayload)} {payload.text}");
-            return payload;
+            Debug.Log($"{nameof(InternalSendPayload)} {payload.text}");
         }
 
         protected override void Register()
         {
             Debug.Log("Register");
-            Register<string, TestPayload>(NetworkMode.Client, InternalSendTest, pay => pay.text);
-            Register<TestPayload>(NetworkMode.Server, InternalSendTestPayload);
+            Register<TestPayload>(NetworkMode.Server, InternalSendPayload);
         }
 
         protected override void Update()
@@ -47,8 +40,7 @@ namespace Multiplayer.API
             if (i < 5)
             {
                 Debug.Log($"Invoke {i}");
-                SendTest($"Test {i}");
-                SendTestPayload(new TestPayload($"TestPayload {i}"));
+                SendTest(new TestPayload($"TestPayload {i}"));
                 i++;
             }
         }

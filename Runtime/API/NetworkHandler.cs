@@ -8,7 +8,9 @@ using UnityEngine;
 namespace Multiplayer.API
 {
     /// <summary>
-    /// Can send only the same mode as current mode and recieve only different mode
+    /// Invoke method only if the NetworkMode of the method is the same as
+    /// Current NetworkMode and its Server, if its not server it sends the request to server for invoking the method
+    /// which then resends its to every client and is then called
     /// </summary>
     public enum NetworkMode
     {
@@ -51,15 +53,25 @@ namespace Multiplayer.API
         private static Dictionary<string, int> classesNetworkId = new Dictionary<string, int>();
 
         private static Dictionary<string, Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>>> registeredControllers = new Dictionary<string, Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>>>();
-        public static void Send(string classTag, string id, string methodTag, object payload)
+        public static void Invoke<T>(string classTag, string id, Action<T> func, T argument) where T : Payload
         {
             if (commandsHandler != null)
             {
+                string methodTag = func.Method.Name;
                 if (TryGetAction(classTag, id, methodTag, out var action))
                 {
-                    if (action.mode == commandsHandler.Mode)
+                    //If invoke on server, Run and send the 
+                    if (commandsHandler.Mode == action.mode)
                     {
-                        commandsHandler.Send(JsonConvert.SerializeObject(new Command(classTag, id, methodTag, payload), Formatting.None));
+                        if (commandsHandler.Mode == NetworkMode.Server)
+                        {
+                            func(argument);
+                            Send(classTag, id, methodTag, argument);
+                        }
+                        else
+                        {
+                            Send(classTag, id, methodTag, argument);
+                        }
                     }
                 }
             }
@@ -85,9 +97,15 @@ namespace Multiplayer.API
                     {
                         if (TryGetAction(classTag, id, methodTag, out var action))
                         {
-                            if (action.mode != commandsHandler.Mode)
+                            if (commandsHandler.Mode == NetworkMode.Client)
                             {
                                 action.action?.Invoke(payload);
+                                return;
+                            }
+                            else if (commandsHandler.Mode == NetworkMode.Server && action.mode == NetworkMode.Client)
+                            {
+                                action.action?.Invoke(payload);
+                                Send(classTag, id, methodTag, payload);
                                 return;
                             }
                             else
@@ -113,7 +131,7 @@ namespace Multiplayer.API
             }
         }
 
-        public static int RegisterNetworkObject<M>(NetworkObject<M> networkObject) where M : MonoBehaviour
+        public static int RegisterNetworkObject<M>() where M : MonoBehaviour
         {
             var tag = NetworkObject<M>.ClassTag;
 
@@ -166,6 +184,14 @@ namespace Multiplayer.API
         public static void RegisterCommandsHandler(ICommandsHandler commandsHandler)
         {
             NetworkHandler.commandsHandler = commandsHandler;
+        }
+
+        private static void Send(string classTag, string id, string methodTag, object payload)
+        {
+            if (commandsHandler != null)
+            {
+                commandsHandler.Send(JsonConvert.SerializeObject(new Command(classTag, id, methodTag, payload), Formatting.None));
+            }
         }
 
         private static bool TryGetAction(string classTag, string id, string methodTag, out (NetworkMode mode, Action<object> action) action)
