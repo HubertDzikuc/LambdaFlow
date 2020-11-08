@@ -11,6 +11,7 @@ namespace Multiplayer.API
     {
         private NetworkObject<M> networkObject;
         private NetworkTransform<M> networkTransform;
+        private NetworkRigidbody2D<M> networkRigidbody2D;
 
         protected void Register<T>(NetworkMode mode, Func<T, T> func) where T : Payload => networkObject.Register(mode, func);
         protected void Register<T, P>(NetworkMode mode, Func<T, P> func, Func<P, T> toArgument) where P : Payload => networkObject.Register(mode, func, toArgument);
@@ -22,12 +23,14 @@ namespace Multiplayer.API
         {
             networkObject = new NetworkObject<M>();
             networkTransform = new NetworkTransform<M>(transform);
+            networkRigidbody2D = new NetworkRigidbody2D<M>(GetComponent<Rigidbody2D>());
             Register();
         }
 
         protected virtual void Update()
         {
             networkTransform.Update();
+            networkRigidbody2D.Update();
         }
 
         protected virtual void OnDestroy()
@@ -38,6 +41,8 @@ namespace Multiplayer.API
         public void Dispose()
         {
             networkObject.Dispose();
+            networkTransform.Dispose();
+            networkRigidbody2D.Dispose();
         }
     }
 }

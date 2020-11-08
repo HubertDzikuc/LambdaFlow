@@ -47,7 +47,7 @@ namespace Multiplayer.API
         {
             this.transform = transform;
 
-            Register<TransformPayload>(NetworkMode.Server, SetPosition);
+            Register<TransformPayload>(NetworkMode.Server, UpdateTransformData);
         }
 
         public void Update()
@@ -56,13 +56,12 @@ namespace Multiplayer.API
             // invoking the method localy on client which would do nothing
             if (NetworkHandler.CurrentMode == NetworkMode.Server)
             {
-                Invoke(SetPosition, new TransformPayload(transform));
+                Invoke(UpdateTransformData, new TransformPayload(transform));
             }
         }
 
-        private TransformPayload SetPosition(TransformPayload payload)
+        private TransformPayload UpdateTransformData(TransformPayload payload)
         {
-
             if (NetworkHandler.CurrentMode == NetworkMode.Client)
             {
                 transform.position = payload.Position;
