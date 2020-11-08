@@ -16,7 +16,7 @@ namespace Multiplayer.API
 
         public static string ClassTag => typeof(M).Name;
 
-        public string NetworkId { get; private set; } = "0";
+        public string NetworkId { get; private set; }
 
         public void Invoke<T, P>(Func<T, P> func, T argument) where P : Payload => NetworkHandler.Send(ClassTag, NetworkId, func.Method.Name, func(argument));
 

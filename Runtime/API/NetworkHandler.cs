@@ -116,6 +116,7 @@ namespace Multiplayer.API
         public static int RegisterNetworkObject<M>(NetworkObject<M> networkObject) where M : MonoBehaviour
         {
             var tag = NetworkObject<M>.ClassTag;
+
             if (classesNetworkId.ContainsKey(tag))
             {
                 var id = classesNetworkId[tag];
@@ -124,7 +125,7 @@ namespace Multiplayer.API
             }
             else
             {
-                classesNetworkId.Add(tag, 0);
+                classesNetworkId.Add(tag, 1);
                 return 0;
             }
         }
