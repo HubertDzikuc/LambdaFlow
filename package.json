@@ -1,6 +1,6 @@
 {
   "name": "com.hubibubi.multiplayer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "Multiplayer",
   "description": "This is an multiplayer package",
   "unity": "2020.1",
