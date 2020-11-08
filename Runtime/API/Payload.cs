@@ -1,7 +1,8 @@
 ﻿using Newtonsoft.Json;
 using System;
+using UnityEngine;
 
-namespace Aggressors.API
+namespace Multiplayer.API
 {
     [Serializable]
     public abstract class Payload { }
@@ -20,6 +21,24 @@ namespace Aggressors.API
         public Reply(string status)
         {
             this.Status = status;
+        }
+    }
+
+    [Serializable]
+    public class TransformPayload : Payload
+    {
+        public float X;
+        public float Y;
+        public float Z;
+
+        [JsonIgnore]
+        public Vector3 Position => new Vector3(X, Y, Z);
+
+        public TransformPayload(Vector3 position)
+        {
+            this.X = position.x;
+            this.Y = position.y;
+            this.Z = position.z;
         }
     }
 }

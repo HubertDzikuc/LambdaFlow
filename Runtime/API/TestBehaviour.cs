@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace Aggressors.API
+namespace Multiplayer.API
 {
     public class TestBehaviour : NetworkBehaviour<TestBehaviour>
     {
@@ -18,8 +15,6 @@ namespace Aggressors.API
                 this.text = str;
             }
         }
-
-        //private NetworkObject<TestBehaviour> networkObject = new NetworkObject<TestBehaviour>();
 
         private int i = 0;
 
@@ -41,13 +36,14 @@ namespace Aggressors.API
         protected override void Register()
         {
             Debug.Log("Register");
-            //can send only the same as current mode and recieve the different 
             Register<string, TestPayload>(NetworkMode.Client, InternalSendTest, pay => pay.text);
             Register<TestPayload>(NetworkMode.Server, InternalSendTestPayload);
         }
 
-        private void Update()
+        protected override void Update()
         {
+            base.Update();
+
             if (i < 5)
             {
                 Debug.Log($"Invoke {i}");

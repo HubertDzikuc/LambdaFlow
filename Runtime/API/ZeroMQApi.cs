@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using ZeroMQ;
 
-namespace Aggressors.API
+namespace Multiplayer.API
 {
     public class ZeroMQApi : MonoBehaviour, ICommandsHandler
     {
