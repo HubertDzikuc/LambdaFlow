@@ -30,6 +30,7 @@ namespace Multiplayer.API
 
         private TransformPayload SetPosition(TransformPayload payload)
         {
+            
             if (NetworkHandler.CurrentMode == NetworkMode.Client)
             {
                 transform.position = payload.Position;
