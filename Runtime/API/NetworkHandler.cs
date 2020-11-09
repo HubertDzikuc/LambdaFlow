@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -28,16 +26,12 @@ namespace Multiplayer.API
         [Serializable]
         private class Command : Payload
         {
-            [JsonProperty(PropertyName = "class"), JsonRequired]
             public string ClassTag;
-            [JsonProperty(PropertyName = "id"), JsonRequired]
             public string NetworkId;
-            [JsonProperty(PropertyName = "method"), JsonRequired]
             public string MethodTag;
-            [JsonProperty(PropertyName = "payload"), JsonRequired]
-            public object Payload;
+            public string Payload;
 
-            public Command(string classTag, string id, string methodTag, object payload)
+            public Command(string classTag, string id, string methodTag, string payload)
             {
                 ClassTag = classTag;
                 NetworkId = id;
@@ -87,15 +81,17 @@ namespace Multiplayer.API
             {
                 try
                 {
-                    var commandJson = JObject.Parse(message);
-                    var classTag = commandJson["class"].ToString();
-                    var id = commandJson["id"].ToString();
-                    var methodTag = commandJson["method"].ToString();
-                    var payload = commandJson["payload"];
+                    var command = JsonUtility.FromJson<Command>(message);
+
+                    var classTag = command.ClassTag;
+                    var id = command.NetworkId;
+                    var methodTag = command.MethodTag;
+                    var payload = command.Payload;
 
                     if (classTag != "API")
                     {
-                        if (TryGetAction(classTag, id, methodTag, out var action))
+                        if (classTag != null && id != null && methodTag != null && payload != null
+                            && TryGetAction(classTag, id, methodTag, out var action))
                         {
                             if (commandsHandler.Mode == NetworkMode.Client)
                             {
@@ -190,7 +186,7 @@ namespace Multiplayer.API
         {
             if (commandsHandler != null)
             {
-                commandsHandler.Send(JsonConvert.SerializeObject(new Command(classTag, id, methodTag, payload), Formatting.None));
+                commandsHandler.Send(JsonUtility.ToJson(new Command(classTag, id, methodTag, JsonUtility.ToJson(payload))));
             }
         }
 

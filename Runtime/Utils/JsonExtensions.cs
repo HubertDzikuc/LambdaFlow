@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using UnityEngine;
 
 namespace Multiplayer.API
 {
@@ -6,14 +6,25 @@ namespace Multiplayer.API
     {
         public static bool TryParseJson<T>(this string str, out T result)
         {
-            bool success = true;
-            var settings = new JsonSerializerSettings
+            try
             {
-                Error = (sender, args) => { success = false; args.ErrorContext.Handled = true; },
-                MissingMemberHandling = MissingMemberHandling.Error
-            };
-            result = JsonConvert.DeserializeObject<T>(str, settings);
-            return success;
+                var initialResult = JsonUtility.FromJson<T>(str);
+                if (initialResult != null)
+                {
+                    result = initialResult;
+                    return true;
+                }
+                else
+                {
+                    result = default;
+                    return false;
+                }
+            }
+            catch
+            {
+                result = default;
+                return false;
+            }
         }
     }
 }

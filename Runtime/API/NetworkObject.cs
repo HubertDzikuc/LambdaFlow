@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -24,14 +22,12 @@ namespace Multiplayer.API
         {
             NetworkHandler.Register(mode, ClassTag, NetworkId, action.Method.Name, p =>
              {
-                 if (FromJson<T>(p, out var payload))
+                 if (p.ToString().TryParseJson<T>(out var payload))
                  {
                      action(payload);
                  }
              });
         }
-
-        protected bool FromJson<T>(object json, out T payload) where T : Payload => json.ToString().TryParseJson(out payload);
 
         public void Dispose()
         {

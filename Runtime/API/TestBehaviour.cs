@@ -21,16 +21,23 @@ namespace Multiplayer.API
         private int i = 0;
 
         public void SendTest(TestPayload payload) => Invoke(InternalSendPayload, payload);
+        public void SendTest2(TestPayload payload) => Invoke(InternalSendPayload2, payload);
 
         private void InternalSendPayload(TestPayload payload)
         {
             Debug.Log($"{nameof(InternalSendPayload)} {payload.text}");
         }
 
+        private void InternalSendPayload2(TestPayload payload)
+        {
+            Debug.Log($"{nameof(InternalSendPayload2)} {payload.text}");
+        }
+
         protected override void Register()
         {
             Debug.Log("Register");
             Register<TestPayload>(NetworkMode.Server, InternalSendPayload);
+            Register<TestPayload>(NetworkMode.Client, InternalSendPayload2);
         }
 
         protected override void Update()
@@ -41,6 +48,7 @@ namespace Multiplayer.API
             {
                 Debug.Log($"Invoke {i}");
                 SendTest(new TestPayload($"TestPayload {i}"));
+                SendTest2(new TestPayload($"TestPayload {i}"));
                 i++;
             }
         }

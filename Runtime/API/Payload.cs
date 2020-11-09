@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using UnityEngine;
 
 namespace Multiplayer.API
