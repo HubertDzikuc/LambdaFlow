@@ -29,14 +29,14 @@ namespace Multiplayer.API
 
         private Rigidbody2D rigidbody;
 
-        public NetworkRigidbody2D(Rigidbody2D rigidbody) : base()
+        public NetworkRigidbody2D(Rigidbody2D rigidbody, M parent) : base(parent)
         {
             this.rigidbody = rigidbody;
 
             Register<Rigidbody2DPayload>(NetworkMode.Server, UpdateRigidbodyData);
         }
 
-        public void Update()
+        public override void Update()
         {
             // The if is not needed but helps the performance because we are not 
             // invoking the method localy on client which would do nothing

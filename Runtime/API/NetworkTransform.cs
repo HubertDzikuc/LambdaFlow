@@ -39,14 +39,14 @@ namespace Multiplayer.API
 
         private Transform transform;
 
-        public NetworkTransform(Transform transform) : base()
+        public NetworkTransform(Transform transform, M parent) : base(parent)
         {
             this.transform = transform;
 
             Register<TransformPayload>(NetworkMode.Server, UpdateTransformData);
         }
 
-        public void Update()
+        public override void Update()
         {
             // The if is not needed but helps the performance because we are not 
             // invoking the method localy on client which would do nothing
@@ -64,5 +64,6 @@ namespace Multiplayer.API
                 transform.rotation = payload.Rotation;
             }
         }
+
     }
 }

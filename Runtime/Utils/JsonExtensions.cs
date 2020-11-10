@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Multiplayer.API
 {
@@ -8,16 +9,41 @@ namespace Multiplayer.API
         {
             try
             {
-                var initialResult = JsonUtility.FromJson<T>(str);
-                if (initialResult != null)
+                var type = typeof(T);
+                if (type.IsValueType || type.IsPrimitive || type == typeof(string))
                 {
-                    result = initialResult;
-                    return true;
+                    try
+                    {
+                        result = (T)Convert.ChangeType(str, typeof(T));
+                        return true;
+                    }
+                    catch
+                    {
+                        result = default;
+                        return false;
+                    }
                 }
                 else
                 {
-                    result = default;
-                    return false;
+                    try
+                    {
+                        var initialResult = JsonUtility.FromJson<T>(str);
+                        if (initialResult != null)
+                        {
+                            result = initialResult;
+                            return true;
+                        }
+                        else
+                        {
+                            result = default;
+                            return false;
+                        }
+                    }
+                    catch
+                    {
+                        result = default;
+                        return false;
+                    }
                 }
             }
             catch
@@ -28,3 +54,4 @@ namespace Multiplayer.API
         }
     }
 }
+

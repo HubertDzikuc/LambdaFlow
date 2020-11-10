@@ -1,11 +1,10 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Multiplayer.API
 {
-    public class TestBehaviour : NetworkMonoBehaviour<TestBehaviour>
+    public class TestBehaviour : MonoBehaviour
     {
-        protected override Rigidbody2D Rigidbody2D => GetComponent<Rigidbody2D>();
-
         public class TestPayload : Payload
         {
             public string text = "dabdafjaf";
@@ -18,39 +17,46 @@ namespace Multiplayer.API
             }
         }
 
+        public string Value = "ValueStart";
+
+        private NetworkObject<TestBehaviour> networkBehaviour;
+
+        public Action<string> SendPayload;
+
+        private void LocalSendPayload(string str)
+        {
+            Debug.Log($"{nameof(LocalSendPayload)} {str}");
+        }
+
+        private void Start()
+        {
+            networkBehaviour = new NetworkObject<TestBehaviour>(this)
+                .Register(NetworkMode.Server, LocalSendPayload, out SendPayload)
+                .Register(() => Value);
+        }
+
         private int i = 0;
-
-        public void SendTest(TestPayload payload) => Invoke(InternalSendPayload, payload);
-        public void SendTest2(TestPayload payload) => Invoke(InternalSendPayload2, payload);
-
-        private void InternalSendPayload(TestPayload payload)
+        private void Update()
         {
-            Debug.Log($"{nameof(InternalSendPayload)} {payload.text}");
-        }
-
-        private void InternalSendPayload2(TestPayload payload)
-        {
-            Debug.Log($"{nameof(InternalSendPayload2)} {payload.text}");
-        }
-
-        protected override void Register()
-        {
-            Debug.Log("Register");
-            Register<TestPayload>(NetworkMode.Server, InternalSendPayload);
-            Register<TestPayload>(NetworkMode.Client, InternalSendPayload2);
-        }
-
-        protected override void Update()
-        {
-            base.Update();
-
-            if (i < 5)
+            //if (i < 5)
             {
-                Debug.Log($"Invoke {i}");
-                SendTest(new TestPayload($"TestPayload {i}"));
-                SendTest2(new TestPayload($"TestPayload {i}"));
+                // Debug.Log($"Invoke {i}");
+                // SendPayload($"Invoking {nameof(SendPayload)} {i}");
+                if (NetworkHandler.CurrentMode == NetworkMode.Server)
+                {
+                    Value = $"ValueChangedByServer {i}";
+                    networkBehaviour.Update();
+                    // Debug.Log(Value);
+                }
+                else
+                {
+                    Value = $"ValueChangedByClient {i}";
+                    networkBehaviour.Update();
+                    // Debug.Log(Value);
+                }
                 i++;
             }
+            // Debug.Log(Value);
         }
     }
 }

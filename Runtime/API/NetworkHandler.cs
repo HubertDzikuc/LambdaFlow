@@ -47,7 +47,8 @@ namespace Multiplayer.API
         private static Dictionary<string, int> classesNetworkId = new Dictionary<string, int>();
 
         private static Dictionary<string, Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>>> registeredControllers = new Dictionary<string, Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>>>();
-        public static void Invoke<T>(string classTag, string id, Action<T> func, T argument) where T : Payload
+
+        public static void Invoke<T>(string classTag, string id, Action<T> func, T argument)
         {
             if (commandsHandler != null)
             {
@@ -70,6 +71,7 @@ namespace Multiplayer.API
                 }
             }
         }
+
 
         public static void Receive(string message)
         {
@@ -127,9 +129,9 @@ namespace Multiplayer.API
             }
         }
 
-        public static int RegisterNetworkObject<M>() where M : MonoBehaviour
+        public static int RegisterNetworkObject<T>(NetworkObject<T> networkObject) where T : class
         {
-            var tag = NetworkObject<M>.ClassTag;
+            var tag = networkObject.ClassTag;
 
             if (classesNetworkId.ContainsKey(tag))
             {
@@ -144,29 +146,29 @@ namespace Multiplayer.API
             }
         }
 
-        public static void Register(NetworkMode mode, string classTag, string id, string methodName, Action<object> action)
+        public static void Register(NetworkMode mode, string classTag, string id, string methodTag, Action<object> action)
         {
             if (!registeredControllers.ContainsKey(classTag))
             {
-                registeredControllers.Add(classTag, new Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>> { { id, new Dictionary<string, (NetworkMode mode, Action<object> action)> { { methodName, (mode, action) } } } });
+                registeredControllers.Add(classTag, new Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>> { { id, new Dictionary<string, (NetworkMode mode, Action<object> action)> { { methodTag, (mode, action) } } } });
             }
             else
             {
                 if (!registeredControllers[classTag].ContainsKey(id))
                 {
-                    registeredControllers[classTag].Add(id, new Dictionary<string, (NetworkMode mode, Action<object> action)> { { methodName, (mode, action) } });
+                    registeredControllers[classTag].Add(id, new Dictionary<string, (NetworkMode mode, Action<object> action)> { { methodTag, (mode, action) } });
                 }
                 else
                 {
-                    if (!registeredControllers[classTag][id].ContainsKey(methodName))
+                    if (!registeredControllers[classTag][id].ContainsKey(methodTag))
                     {
-                        registeredControllers[classTag][id].Add(methodName, (mode, action));
+                        registeredControllers[classTag][id].Add(methodTag, (mode, action));
                     }
                 }
             }
         }
 
-        public static void Deregister(string classTag, string id)
+        public static void Unregister(string classTag, string id)
         {
             if (registeredControllers.ContainsKey(classTag))
             {
@@ -186,7 +188,17 @@ namespace Multiplayer.API
         {
             if (commandsHandler != null)
             {
-                commandsHandler.Send(JsonUtility.ToJson(new Command(classTag, id, methodTag, JsonUtility.ToJson(payload))));
+                string payloadString = "";
+                var type = payload.GetType();
+                if (type.IsValueType || type.IsPrimitive || type == typeof(string))
+                {
+                    payloadString = payload.ToString();
+                }
+                else
+                {
+                    payloadString = JsonUtility.ToJson(payload);
+                }
+                commandsHandler.Send(JsonUtility.ToJson(new Command(classTag, id, methodTag, payloadString)));
             }
         }
 
