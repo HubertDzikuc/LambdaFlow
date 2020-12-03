@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Multiplayer.API
 {
-    public class NetworkTransform<M> : NetworkObject<M> where M : MonoBehaviour
+    public class NetworkTransform
     {
         [Serializable]
         public class TransformPayload : Payload
@@ -37,33 +37,23 @@ namespace Multiplayer.API
             }
         }
 
-        private Transform transform;
+        private readonly NetworkCommand<TransformPayload> updateTransformAction;
 
-        public NetworkTransform(Transform transform, M parent) : base(parent)
+        private readonly Transform transform;
+
+        public NetworkTransform(Transform transform)
         {
             this.transform = transform;
 
-            Register<TransformPayload>(NetworkMode.Server, UpdateTransformData);
-        }
+            updateTransformAction = new NetworkCommand<TransformPayload>(UpdateTransformData);
 
-        public override void Update()
-        {
-            // The if is not needed but helps the performance because we are not 
-            // invoking the method localy on client which would do nothing
-            if (NetworkHandler.CurrentMode == NetworkMode.Server)
-            {
-                Invoke(UpdateTransformData, new TransformPayload(transform));
-            }
+            updateTransformAction.RunInUpdate(() => new TransformPayload(this.transform));
         }
 
         private void UpdateTransformData(TransformPayload payload)
         {
-            if (NetworkHandler.CurrentMode == NetworkMode.Client)
-            {
-                transform.position = payload.Position;
-                transform.rotation = payload.Rotation;
-            }
+            transform.position = payload.Position;
+            transform.rotation = payload.Rotation;
         }
-
     }
 }

@@ -19,9 +19,10 @@ namespace Multiplayer.API
 
         public string Value = "ValueStart";
 
-        private NetworkObject<TestBehaviour> networkBehaviour;
+        private NetworkTransform networkTransform;
+        private NetworkRigidbody2D networkRigidbody;
 
-        public Action<string> SendPayload;
+        public NetworkSyncedTask<string> SendPayload;
 
         private void LocalSendPayload(string str)
         {
@@ -30,33 +31,15 @@ namespace Multiplayer.API
 
         private void Start()
         {
-            networkBehaviour = new NetworkObject<TestBehaviour>(this)
-                .Register(NetworkMode.Server, LocalSendPayload, out SendPayload)
-                .Register(() => Value);
+            networkTransform = new NetworkTransform(transform);
+            networkRigidbody = new NetworkRigidbody2D(GetComponent<Rigidbody2D>());
+            SendPayload = new NetworkSyncedTask<string>(LocalSendPayload);
         }
 
         private int i = 0;
         private void Update()
         {
-            //if (i < 5)
-            {
-                // Debug.Log($"Invoke {i}");
-                // SendPayload($"Invoking {nameof(SendPayload)} {i}");
-                if (NetworkHandler.CurrentMode == NetworkMode.Server)
-                {
-                    Value = $"ValueChangedByServer {i}";
-                    networkBehaviour.Update();
-                    // Debug.Log(Value);
-                }
-                else
-                {
-                    Value = $"ValueChangedByClient {i}";
-                    networkBehaviour.Update();
-                    // Debug.Log(Value);
-                }
-                i++;
-            }
-            // Debug.Log(Value);
+            SendPayload.Invoke($"Invoking {nameof(SendPayload)} {i}");
         }
     }
 }

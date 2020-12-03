@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Multiplayer.API
 {
-    public class NetworkRigidbody2D<M> : NetworkObject<M> where M : MonoBehaviour
+    public class NetworkRigidbody2D
     {
         [Serializable]
         public class Rigidbody2DPayload : Payload
@@ -27,32 +27,23 @@ namespace Multiplayer.API
             }
         }
 
-        private Rigidbody2D rigidbody;
+        private readonly NetworkCommand<Rigidbody2DPayload> updateRigidbodyAction;
 
-        public NetworkRigidbody2D(Rigidbody2D rigidbody, M parent) : base(parent)
+        private readonly Rigidbody2D rigidbody;
+
+        public NetworkRigidbody2D(Rigidbody2D rigidbody)
         {
             this.rigidbody = rigidbody;
 
-            Register<Rigidbody2DPayload>(NetworkMode.Server, UpdateRigidbodyData);
-        }
+            updateRigidbodyAction = new NetworkCommand<Rigidbody2DPayload>(UpdateRigidbodyData);
 
-        public override void Update()
-        {
-            // The if is not needed but helps the performance because we are not 
-            // invoking the method localy on client which would do nothing
-            if (NetworkHandler.CurrentMode == NetworkMode.Server)
-            {
-                Invoke(UpdateRigidbodyData, new Rigidbody2DPayload(rigidbody));
-            }
+            updateRigidbodyAction.RunInUpdate(() => new Rigidbody2DPayload(this.rigidbody));
         }
 
         private void UpdateRigidbodyData(Rigidbody2DPayload payload)
         {
-            if (NetworkHandler.CurrentMode == NetworkMode.Client)
-            {
-                rigidbody.angularVelocity = payload.AngularVelocity;
-                rigidbody.velocity = payload.Velocity;
-            }
+            rigidbody.angularVelocity = payload.AngularVelocity;
+            rigidbody.velocity = payload.Velocity;
         }
     }
 }

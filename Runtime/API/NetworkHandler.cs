@@ -15,65 +15,186 @@ namespace Multiplayer.API
         Client,
         Server
     }
+
+    public enum UpdateTiming
+    {
+        Never,
+        OncePerUpdate
+    }
+
+    public interface ILog
+    {
+        void LogError(Exception ex);
+        void LogError(string msg);
+        void LogWarning(string msg);
+    }
+
     public interface ICommandsHandler
     {
+        Action UpdateEvent { get; set; }
         NetworkMode Mode { get; }
         void Send(string command);
     }
 
-    public static class NetworkHandler
+    public abstract class ITask<T>
     {
+        public NetworkMode Mode { get; private set; }
+        protected Action<T> Action { get; private set; }
+
+        protected ITask(NetworkMode mode, Action<T> action)
+        {
+            this.Mode = mode;
+            this.Action = action;
+        }
+
+        public virtual void Invoke(T argument)
+        {
+            if (NetworkHandler.Mode == Mode)
+            {
+                Action?.Invoke(argument);
+            }
+        }
+
+        public virtual void RunInUpdate(Func<T> argument, UpdateTiming updateTiming = UpdateTiming.OncePerUpdate)
+        {
+            NetworkHandler.RunInUpdate(Mode, () => Invoke(argument()), updateTiming);
+        }
+    }
+
+    public abstract class INetworkTask<T> : ITask<T>, IDisposable
+    {
+        public int Id { get; private set; }
+        protected Func<int, object, bool> Sender { get; private set; }
+
+        protected INetworkTask(NetworkMode mode, Action<T> action) : base(mode, action)
+        {
+            NetworkHandler.Instance.Register(Receive, out var id, out var sender);
+            Id = id;
+            Sender = sender;
+        }
+
+        public virtual Reply Receive(object argument)
+        {
+            if (NetworkHandler.Mode == NetworkMode.Client)
+            {
+                if (argument.ToString().TryParseJson<T>(out var payload))
+                {
+                    Action(payload);
+
+                    if (NetworkHandler.Mode == NetworkMode.Server && Mode == NetworkMode.Client)
+                    {
+                        Sender(Id, argument);
+                    }
+                    return Reply.Success;
+                }
+                else
+                {
+                    NetworkHandler.Log.LogWarning($"Couldn't parse data {argument} to type {typeof(T)} ({Mode} {Action.Method.Name})");
+                    return Reply.ParsingError;
+                }
+            }
+            else
+            {
+                return Reply.InvalidMode;
+            }
+        }
+
+        public void Dispose()
+        {
+            NetworkHandler.Instance.Deregister(this);
+        }
+    }
+
+    public class LocalServerTask<T> : ITask<T>
+    {
+        public LocalServerTask(Action<T> action) : base(NetworkMode.Server, action) { }
+    }
+
+    public class LocalClientTask<T> : ITask<T>
+    {
+        public LocalClientTask(Action<T> action) : base(NetworkMode.Client, action) { }
+    }
+
+    public class NetworkRequest<T> : INetworkTask<T>
+    {
+        public NetworkRequest(Action<T> action) : base(NetworkMode.Client, action) { }
+        public override void Invoke(T argument)
+        {
+            if (NetworkHandler.Mode == Mode)
+            {
+                Sender(Id, argument);
+            }
+        }
+    }
+
+    public class NetworkSyncedTask<T> : INetworkTask<T>
+    {
+        public NetworkSyncedTask(Action<T> action) : base(NetworkMode.Server, action) { }
+        public override void Invoke(T argument)
+        {
+            if (NetworkHandler.Mode == Mode)
+            {
+                if (NetworkHandler.Mode == NetworkMode.Server)
+                {
+                    Action(argument);
+                }
+                Sender(Id, argument);
+            }
+        }
+    }
+
+    public class NetworkCommand<T> : INetworkTask<T>
+    {
+        public NetworkCommand(Action<T> action) : base(NetworkMode.Server, action) { }
+
+        public override void Invoke(T argument)
+        {
+            if (NetworkHandler.Mode == Mode)
+            {
+                Sender(Id, argument);
+            }
+        }
+    }
+
+    public class NetworkHandler
+    {
+        public static NetworkHandler Instance = new Lazy<NetworkHandler>(() => new NetworkHandler(), true).Value;
+
         [Serializable]
         private class Command : Payload
         {
-            public string ClassTag;
-            public string NetworkId;
-            public string MethodTag;
+            public string Id;
             public string Payload;
 
-            public Command(string classTag, string id, string methodTag, string payload)
+            public Command(string id, string payload)
             {
-                ClassTag = classTag;
-                NetworkId = id;
-                MethodTag = methodTag;
+                Id = id;
                 Payload = payload;
             }
         }
 
-        public static NetworkMode CurrentMode => commandsHandler == null ? NetworkMode.Server : commandsHandler.Mode;
+        public static ILog Log => Instance.log;
+        public static NetworkMode Mode => Instance.commandsHandler == null ? NetworkMode.Server : Instance.commandsHandler.Mode;
 
-        private static ICommandsHandler commandsHandler;
+        private ILog log;
 
-        private static Dictionary<string, int> classesNetworkId = new Dictionary<string, int>();
+        private ICommandsHandler commandsHandler;
 
-        private static Dictionary<string, Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>>> registeredControllers = new Dictionary<string, Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>>>();
+        private List<Func<object, Reply>> registeredControllers = new List<Func<object, Reply>>();
 
-        public static void Invoke<T>(string classTag, string id, Action<T> func, T argument)
+        private int taskId = 0;
+
+        private Dictionary<NetworkMode, List<Action>> updateActionsDictionary = new Dictionary<NetworkMode, List<Action>>();
+
+        public NetworkHandler()
         {
-            if (commandsHandler != null)
+            foreach (NetworkMode mode in (NetworkMode[])Enum.GetValues(typeof(NetworkMode)))
             {
-                string methodTag = func.Method.Name;
-                if (TryGetAction(classTag, id, methodTag, out var action))
-                {
-                    //If invoke on server, Run and send the 
-                    if (commandsHandler.Mode == action.mode)
-                    {
-                        if (commandsHandler.Mode == NetworkMode.Server)
-                        {
-                            func(argument);
-                            Send(classTag, id, methodTag, argument);
-                        }
-                        else
-                        {
-                            Send(classTag, id, methodTag, argument);
-                        }
-                    }
-                }
+                updateActionsDictionary.Add(mode, new List<Action>());
             }
         }
 
-
-        public static void Receive(string message)
+        public void Receive(string message)
         {
             if (message == "")
             {
@@ -85,137 +206,131 @@ namespace Multiplayer.API
                 {
                     var command = JsonUtility.FromJson<Command>(message);
 
-                    var classTag = command.ClassTag;
-                    var id = command.NetworkId;
-                    var methodTag = command.MethodTag;
+                    var id = command.Id;
                     var payload = command.Payload;
 
-                    if (classTag != "API")
+                    if (id != "API")
                     {
-                        if (classTag != null && id != null && methodTag != null && payload != null
-                            && TryGetAction(classTag, id, methodTag, out var action))
+                        if (id != null && payload != null && TryGetAction(id, out var receiver))
                         {
-                            if (commandsHandler.Mode == NetworkMode.Client)
+                            var reply = receiver?.Invoke(payload);
+                            if (reply.ReplyStatus != ReplyStatus.Success)
                             {
-                                action.action?.Invoke(payload);
-                                return;
-                            }
-                            else if (commandsHandler.Mode == NetworkMode.Server && action.mode == NetworkMode.Client)
-                            {
-                                action.action?.Invoke(payload);
-                                Send(classTag, id, methodTag, payload);
-                                return;
-                            }
-                            else
-                            {
-                                Send("API", "", "", Reply.InvalidMode);
+                                Send("API", reply);
                             }
                         }
                         else
                         {
-                            Send("API", "", "", Reply.InvalidRequest);
+                            Send("API", Reply.InvalidRequest);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogException(ex);
-                    Send("API", "", "", Reply.ParsingError);
+                    Log.LogError(ex);
+                    Send("API", Reply.ParsingError);
                 }
             }
             else
             {
-                Send("API", "", "", Reply.InternalError);
+                Send("API", Reply.InternalError);
             }
         }
 
-        public static int RegisterNetworkObject<T>(NetworkObject<T> networkObject) where T : class
+        public void Register(Func<object, Reply> receiver, out int taskId, out Func<int, object, bool> invoker)
         {
-            var tag = networkObject.ClassTag;
+            registeredControllers.Add(receiver);
+            taskId = this.taskId;
+            this.taskId++;
+            invoker = Send;
+        }
 
-            if (classesNetworkId.ContainsKey(tag))
+        public static void RunInUpdate(NetworkMode mode, Action action, UpdateTiming updateTiming)
+        {
+            Instance.updateActionsDictionary[mode].Add(action);
+        }
+
+        public void Deregister<T>(INetworkTask<T> task)
+        {
+            if (registeredControllers.Count > task.Id)
             {
-                var id = classesNetworkId[tag];
-                classesNetworkId[tag]++;
-                return id;
-            }
-            else
-            {
-                classesNetworkId.Add(tag, 1);
-                return 0;
+                registeredControllers.RemoveAt(task.Id);
             }
         }
 
-        public static void Register(NetworkMode mode, string classTag, string id, string methodTag, Action<object> action)
+        public void RegisterCommandsHandler(ICommandsHandler commandsHandler, ILog log)
         {
-            if (!registeredControllers.ContainsKey(classTag))
+            if (this.commandsHandler != null)
             {
-                registeredControllers.Add(classTag, new Dictionary<string, Dictionary<string, (NetworkMode mode, Action<object> action)>> { { id, new Dictionary<string, (NetworkMode mode, Action<object> action)> { { methodTag, (mode, action) } } } });
+                this.commandsHandler.UpdateEvent -= Update;
             }
-            else
+            this.log = log;
+            this.commandsHandler = commandsHandler;
+            commandsHandler.UpdateEvent += Update;
+        }
+
+        private void Update()
+        {
+            foreach (var action in updateActionsDictionary[Mode])
             {
-                if (!registeredControllers[classTag].ContainsKey(id))
+                try
                 {
-                    registeredControllers[classTag].Add(id, new Dictionary<string, (NetworkMode mode, Action<object> action)> { { methodTag, (mode, action) } });
+                    action.Invoke();
                 }
-                else
+                catch (Exception ex)
                 {
-                    if (!registeredControllers[classTag][id].ContainsKey(methodTag))
-                    {
-                        registeredControllers[classTag][id].Add(methodTag, (mode, action));
-                    }
-                }
-            }
-        }
-
-        public static void Unregister(string classTag, string id)
-        {
-            if (registeredControllers.ContainsKey(classTag))
-            {
-                if (registeredControllers[classTag].ContainsKey(id))
-                {
-                    registeredControllers[classTag].Remove(id);
+                    Log.LogError(ex);
                 }
             }
         }
 
-        public static void RegisterCommandsHandler(ICommandsHandler commandsHandler)
-        {
-            NetworkHandler.commandsHandler = commandsHandler;
-        }
+        private bool Send(int id, object payload) => Send(id.ToString(), payload);
 
-        private static void Send(string classTag, string id, string methodTag, object payload)
+        private bool Send(string id, object payload)
         {
             if (commandsHandler != null)
             {
-                string payloadString = "";
-                var type = payload.GetType();
-                if (type.IsValueType || type.IsPrimitive || type == typeof(string))
+                if (TryGetAction(id, out var outAction))
                 {
-                    payloadString = payload.ToString();
+                    var type = payload.GetType();
+                    if (type.IsValueType || type.IsPrimitive || type == typeof(string))
+                    {
+                        commandsHandler.Send(JsonUtility.ToJson(new Command(id, payload.ToString())));
+                    }
+                    else
+                    {
+                        commandsHandler.Send(JsonUtility.ToJson(new Command(id, JsonUtility.ToJson(payload))));
+                    }
+                    return true;
                 }
-                else
-                {
-                    payloadString = JsonUtility.ToJson(payload);
-                }
-                commandsHandler.Send(JsonUtility.ToJson(new Command(classTag, id, methodTag, payloadString)));
+            }
+            return false;
+        }
+        private bool TryGetAction(string taskId, out Func<object, Reply> action)
+        {
+            action = default;
+            try
+            {
+                int id = Convert.ToInt32(taskId);
+                return TryGetAction(id, out action);
+            }
+            catch (Exception ex)
+            {
+                Log.LogError(ex);
+                return false;
             }
         }
 
-        private static bool TryGetAction(string classTag, string id, string methodTag, out (NetworkMode mode, Action<object> action) action)
+        private bool TryGetAction(int taskId, out Func<object, Reply> action)
         {
             action = default;
 
-            if (registeredControllers.TryGetValue(classTag, out var ids))
+            if (registeredControllers.Count > taskId)
             {
-                if (ids.TryGetValue(id, out var methods))
-                {
-                    if (methods.TryGetValue(methodTag, out action))
-                    {
-                        return true;
-                    }
-                }
+                action = registeredControllers[taskId];
+                return true;
             }
+
             return false;
         }
     }

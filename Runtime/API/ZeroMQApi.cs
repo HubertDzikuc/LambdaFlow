@@ -8,9 +8,29 @@ using ZeroMQ;
 
 namespace Multiplayer.API
 {
+    public class UnityDebugger : ILog
+    {
+        public void LogError(Exception ex)
+        {
+            UnityEngine.Debug.LogError(ex);
+        }
+
+        public void LogError(string msg)
+        {
+            UnityEngine.Debug.LogError(msg);
+        }
+
+        public void LogWarning(string msg)
+        {
+            UnityEngine.Debug.LogWarning(msg);
+        }
+    }
+
     public class ZeroMQApi : MonoBehaviour, ICommandsHandler
     {
         public NetworkMode Mode => mode;
+
+        public Action UpdateEvent { get; set; }
 
         [SerializeField]
         private NetworkMode mode;
@@ -44,7 +64,7 @@ namespace Multiplayer.API
             {
                 Debug.Log($"ZeroMQApi Receiving {subscriberIp}: {message}");
             }
-            NetworkHandler.Receive(message);
+            NetworkHandler.Instance.Receive(message);
         }
 
         private void Awake()
@@ -59,11 +79,12 @@ namespace Multiplayer.API
             {
                 enabled = false;
             }
-            NetworkHandler.RegisterCommandsHandler(this);
+            NetworkHandler.Instance.RegisterCommandsHandler(this, new UnityDebugger());
         }
 
         private void Update()
         {
+            UpdateEvent.Invoke();
             subscriber.OnReceive(Receive);
         }
 
