@@ -12,7 +12,7 @@ namespace Multiplayer.API
     {
         public void LogError(Exception ex)
         {
-            UnityEngine.Debug.LogError(ex);
+            UnityEngine.Debug.LogException(ex);
         }
 
         public void LogError(string msg)
@@ -30,7 +30,7 @@ namespace Multiplayer.API
     {
         public NetworkMode Mode => mode;
 
-        public Action UpdateEvent { get; set; }
+        public event Action UpdateEvent;
 
         [SerializeField]
         private NetworkMode mode;

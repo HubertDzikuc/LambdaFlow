@@ -12,8 +12,10 @@ namespace Multiplayer.API
     /// </summary>
     public enum NetworkMode
     {
+        Server,
         Client,
-        Server
+        Host,
+        SinglePlayer
     }
 
     public enum UpdateTiming
@@ -31,7 +33,7 @@ namespace Multiplayer.API
 
     public interface ICommandsHandler
     {
-        Action UpdateEvent { get; set; }
+        event Action UpdateEvent;
         NetworkMode Mode { get; }
         void Send(string command);
     }
@@ -73,29 +75,34 @@ namespace Multiplayer.API
             Sender = sender;
         }
 
-        public virtual Reply Receive(object argument)
+        protected virtual Reply AfterParse(T payload, object argument)
         {
-            if (NetworkHandler.Mode == NetworkMode.Client)
-            {
-                if (argument.ToString().TryParseJson<T>(out var payload))
-                {
-                    Action(payload);
+            Action(payload);
 
-                    if (NetworkHandler.Mode == NetworkMode.Server && Mode == NetworkMode.Client)
-                    {
-                        Sender(Id, argument);
-                    }
-                    return Reply.Success;
-                }
-                else
-                {
-                    NetworkHandler.Log.LogWarning($"Couldn't parse data {argument} to type {typeof(T)} ({Mode} {Action.Method.Name})");
-                    return Reply.ParsingError;
-                }
+            return Reply.Success;
+        }
+
+        private Reply Receive(object argument)
+        {
+            if (argument.ToString().TryParseJson<T>(out var payload))
+            {
+                return ReplyInfo(AfterParse(payload, argument), argument);
             }
             else
             {
-                return Reply.InvalidMode;
+                return ReplyInfo(Reply.ParsingError, argument);
+            }
+        }
+
+        private Reply ReplyInfo(Reply reply, object argument)
+        {
+            switch (reply.ReplyStatus)
+            {
+                case ReplyStatus.ParsingError:
+                    NetworkHandler.Log.LogWarning($"Couldn't parse data {argument} to type {typeof(T)} ({Mode} {Action.Method.Name})");
+                    return Reply.ParsingError;
+                default:
+                    return reply;
             }
         }
 
@@ -120,10 +127,22 @@ namespace Multiplayer.API
         public NetworkRequest(Action<T> action) : base(NetworkMode.Client, action) { }
         public override void Invoke(T argument)
         {
-            if (NetworkHandler.Mode == Mode)
+            if (NetworkHandler.Mode == NetworkMode.Client)
             {
                 Sender(Id, argument);
             }
+        }
+
+        protected override Reply AfterParse(T payload, object argument)
+        {
+            Action(payload);
+
+            if (NetworkHandler.Mode == NetworkMode.Server)
+            {
+                Sender(Id, argument);
+            }
+
+            return Reply.Success;
         }
     }
 
@@ -132,14 +151,21 @@ namespace Multiplayer.API
         public NetworkSyncedTask(Action<T> action) : base(NetworkMode.Server, action) { }
         public override void Invoke(T argument)
         {
-            if (NetworkHandler.Mode == Mode)
+            if (NetworkHandler.Mode == NetworkMode.Server)
             {
-                if (NetworkHandler.Mode == NetworkMode.Server)
-                {
-                    Action(argument);
-                }
+                Action(argument);
                 Sender(Id, argument);
             }
+        }
+
+        protected override Reply AfterParse(T payload, object argument)
+        {
+            if (NetworkHandler.Mode == NetworkMode.Client)
+            {
+                Action(payload);
+            }
+
+            return Reply.Success;
         }
     }
 
@@ -149,10 +175,20 @@ namespace Multiplayer.API
 
         public override void Invoke(T argument)
         {
-            if (NetworkHandler.Mode == Mode)
+            if (NetworkHandler.Mode == NetworkMode.Server)
             {
                 Sender(Id, argument);
             }
+        }
+
+        protected override Reply AfterParse(T payload, object argument)
+        {
+            if (NetworkHandler.Mode == NetworkMode.Client)
+            {
+                Action(payload);
+            }
+
+            return Reply.Success;
         }
     }
 
@@ -290,22 +326,20 @@ namespace Multiplayer.API
         {
             if (commandsHandler != null)
             {
-                if (TryGetAction(id, out var outAction))
+                var type = payload.GetType();
+                if (type.IsValueType || type.IsPrimitive || type == typeof(string))
                 {
-                    var type = payload.GetType();
-                    if (type.IsValueType || type.IsPrimitive || type == typeof(string))
-                    {
-                        commandsHandler.Send(JsonUtility.ToJson(new Command(id, payload.ToString())));
-                    }
-                    else
-                    {
-                        commandsHandler.Send(JsonUtility.ToJson(new Command(id, JsonUtility.ToJson(payload))));
-                    }
-                    return true;
+                    commandsHandler.Send(JsonUtility.ToJson(new Command(id, payload.ToString())));
                 }
+                else
+                {
+                    commandsHandler.Send(JsonUtility.ToJson(new Command(id, JsonUtility.ToJson(payload))));
+                }
+                return true;
             }
             return false;
         }
+
         private bool TryGetAction(string taskId, out Func<object, Reply> action)
         {
             action = default;
