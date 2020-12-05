@@ -54,13 +54,13 @@ namespace Multiplayer.API.Unity.Tests
             SendPayload = new NetworkSyncedLambda<string>(LocalSendPayload);
             SpawnItself = new NetworkRequest<string>(LocalSpawnItself);
 
+            //SpawnItself.Invoke("Spawn new class");
         }
 
         private int i = 0;
         private void Update()
         {
-            SpawnItself.Invoke("Spawn new class");
-            //  SendPayload.Invoke($"Invoking {nameof(SendPayload)} {i}");
+            SendPayload.Invoke($"Invoking {nameof(SendPayload)} {i}");
         }
     }
 }

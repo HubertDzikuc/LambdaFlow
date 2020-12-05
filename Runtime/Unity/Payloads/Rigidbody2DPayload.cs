@@ -17,7 +17,8 @@ namespace Multiplayer.API.Unity
 
         public Rigidbody2DPayload() { }
 
-        public Rigidbody2DPayload(Rigidbody2D rigidbody)
+        public Rigidbody2DPayload
+            (Rigidbody2D rigidbody)
         {
             AV = rigidbody.angularVelocity;
             VX = rigidbody.velocity.x;

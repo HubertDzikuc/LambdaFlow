@@ -5,7 +5,7 @@ namespace Multiplayer.API.Unity.Lambda
 {
     public class NetworkTransform
     {
-        private readonly NetworkCommand<TransformPayload> updateTransformAction;
+        private readonly NetworkCommandPayload<TransformPayload> updateTransformAction;
 
         private readonly Transform transform;
 
@@ -13,7 +13,7 @@ namespace Multiplayer.API.Unity.Lambda
         {
             this.transform = transform;
 
-            updateTransformAction = new NetworkCommand<TransformPayload>(UpdateTransformData);
+            updateTransformAction = new NetworkCommandPayload<TransformPayload>(UpdateTransformData);
 
             updateTransformAction.RunInUpdate(() => new TransformPayload(this.transform));
         }

@@ -29,6 +29,18 @@ namespace Multiplayer.API.System
             }
         }
 
+        public static bool IsMode(params NetworkMode[] modes)
+        {
+            foreach (var mode in modes)
+            {
+                if (Mode == mode)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void RegisterCommandsHandler(ICommandsHandler commandsHandler)
         {
             if (this.commandsHandler != null)
@@ -41,13 +53,13 @@ namespace Multiplayer.API.System
             commandsHandler.ReceiveEvent += Receive;
         }
 
-        public void Register(Func<object, Reply> receiver, out int lambdaId, out Func<int, object, bool> invoker, out Action deregister)
+        public void Register(Func<object, Reply> receiver, out int lambdaId, out Func<int, object, bool> sender, out Action deregister)
         {
             registeredControllers.Add(receiver);
             lambdaId = NetworkHandler.lambdaId;
             deregister = () => Deregister(NetworkHandler.lambdaId);
             NetworkHandler.lambdaId++;
-            invoker = Send;
+            sender = Send;
         }
 
         public static void RunInUpdate(NetworkMode mode, Action action, UpdateTiming updateTiming)

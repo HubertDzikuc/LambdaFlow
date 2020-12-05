@@ -5,7 +5,7 @@ namespace Multiplayer.API.Unity.Lambda
 {
     public class NetworkRigidbody2D
     {
-        private readonly NetworkCommand<Rigidbody2DPayload> updateRigidbodyAction;
+        private readonly NetworkCommandPayload<Rigidbody2DPayload> updateRigidbodyAction;
 
         private readonly Rigidbody2D rigidbody;
 
@@ -13,7 +13,7 @@ namespace Multiplayer.API.Unity.Lambda
         {
             this.rigidbody = rigidbody;
 
-            updateRigidbodyAction = new NetworkCommand<Rigidbody2DPayload>(UpdateRigidbodyData);
+            updateRigidbodyAction = new NetworkCommandPayload<Rigidbody2DPayload>(UpdateRigidbodyData);
 
             updateRigidbodyAction.RunInUpdate(() => new Rigidbody2DPayload(this.rigidbody));
         }
