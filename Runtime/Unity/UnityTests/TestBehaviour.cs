@@ -1,9 +1,9 @@
 ﻿using Multiplayer.API.Lambda;
 using Multiplayer.API.Payloads;
-using System;
+using Multiplayer.API.Unity.Lambda;
 using UnityEngine;
 
-namespace Multiplayer.API
+namespace Multiplayer.API.Unity.Tests
 {
     public class TestBehaviour : MonoBehaviour
     {
