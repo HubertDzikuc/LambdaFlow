@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Laparo.Sim.ZeroMQ;
+using Multiplayer.API.System;
 using UnityEngine;
 using ZeroMQ;
 
@@ -31,6 +32,10 @@ namespace Multiplayer.API
         public NetworkMode Mode => mode;
 
         public event Action UpdateEvent;
+        public event Action<string> ReceiveEvent;
+
+        public ILog Logger => logger;
+        private ILog logger = new UnityDebugger();
 
         [SerializeField]
         private NetworkMode mode;
@@ -64,7 +69,7 @@ namespace Multiplayer.API
             {
                 Debug.Log($"ZeroMQApi Receiving {subscriberIp}: {message}");
             }
-            NetworkHandler.Instance.Receive(message);
+            ReceiveEvent?.Invoke(message);
         }
 
         private void Awake()
@@ -79,12 +84,12 @@ namespace Multiplayer.API
             {
                 enabled = false;
             }
-            NetworkHandler.Instance.RegisterCommandsHandler(this, new UnityDebugger());
+            NetworkHandler.Instance.RegisterCommandsHandler(this);
         }
 
         private void Update()
         {
-            UpdateEvent.Invoke();
+            UpdateEvent?.Invoke();
             subscriber.OnReceive(Receive);
         }
 

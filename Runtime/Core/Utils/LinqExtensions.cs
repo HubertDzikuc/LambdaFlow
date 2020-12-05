@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq.Expressions;
 
-namespace Multiplayer.API
+namespace Multiplayer.API.Utils
 {
     public static class LinqExtensions
     {
@@ -45,9 +43,9 @@ namespace Multiplayer.API
 //        }
 //    }
 
-//    public NetworkObject<T> RegisterRequest<P>(Action<P> action, out NetworkTask<P> invoker) => RegisterNetworkAction(NetworkMode.Client, action, out invoker);
-//    public NetworkObject<T> RegisterCommand<P>(Action<P> action, out NetworkTask<P> invoker) => RegisterNetworkAction(NetworkMode.Server, action, out invoker, false);
-//    public NetworkObject<T> RegisterSyncMethod<P>(Action<P> action, out NetworkTask<P> invoker) => RegisterNetworkAction(NetworkMode.Server, action, out invoker);
+//    public NetworkObject<T> RegisterRequest<P>(Action<P> action, out NetworkLambda<P> invoker) => RegisterNetworkAction(NetworkMode.Client, action, out invoker);
+//    public NetworkObject<T> RegisterCommand<P>(Action<P> action, out NetworkLambda<P> invoker) => RegisterNetworkAction(NetworkMode.Server, action, out invoker, false);
+//    public NetworkObject<T> RegisterSyncMethod<P>(Action<P> action, out NetworkLambda<P> invoker) => RegisterNetworkAction(NetworkMode.Server, action, out invoker);
 //    public NetworkObject<T> RegisterLocalClientMethod<P>(Action<P> action, out LocalAction<P> invoker) => RegisterLocalAction(NetworkMode.Client, action, out invoker);
 //    public NetworkObject<T> RegisterLocalServerMethod<P>(Action<P> action, out LocalAction<P> invoker) => RegisterLocalAction(NetworkMode.Server, action, out invoker);
 
@@ -55,9 +53,9 @@ namespace Multiplayer.API
 
 //    public NetworkObject<T> BindToUpdate<P>(NetworkMode mode, NetworkObject<P> networkObject) where P : class => RunOnUpdate(mode, networkObject.Update);
 
-//    public NetworkObject<T> RunOnServerUpdate<P>(NetworkTask<P> action, Func<P> argument) => RunOnServerUpdate(() => action.Invoke(argument()));
+//    public NetworkObject<T> RunOnServerUpdate<P>(NetworkLambda<P> action, Func<P> argument) => RunOnServerUpdate(() => action.Invoke(argument()));
 //    public NetworkObject<T> RunOnServerUpdate<P>(LocalAction<P> action, Func<P> argument) => RunOnServerUpdate(() => action.Invoke(argument()));
-//    public NetworkObject<T> RunOnClientUpdate<P>(NetworkTask<P> action, Func<P> argument) => RunOnClientUpdate(() => action.Invoke(argument()));
+//    public NetworkObject<T> RunOnClientUpdate<P>(NetworkLambda<P> action, Func<P> argument) => RunOnClientUpdate(() => action.Invoke(argument()));
 //    public NetworkObject<T> RunOnClientUpdate<P>(LocalAction<P> action, Func<P> argument) => RunOnClientUpdate(() => action.Invoke(argument()));
 
 //    public NetworkObject<T> RunOnServerUpdate(Action action) => RunOnUpdate(NetworkMode.Server, action);
@@ -81,7 +79,7 @@ namespace Multiplayer.API
 //        return this;
 //    }
 
-//    private NetworkObject<T> RegisterNetworkAction<P>(NetworkMode mode, Action<P> action, out NetworkTask<P> invoker, bool call = true)
+//    private NetworkObject<T> RegisterNetworkAction<P>(NetworkMode mode, Action<P> action, out NetworkLambda<P> invoker, bool call = true)
 //    {
 //        NetworkHandler.Instance.Register(mode, p =>
 //        {
@@ -94,7 +92,7 @@ namespace Multiplayer.API
 //                UnityEngine.Debug.LogWarning($"Couldn't parse data {p} to type {typeof(P)} ({mode} {classTag} {networkId} {action.Method.Name})");
 //            }
 //        });
-//        invoker = new NetworkTask<P>(mode, call ? action : null);
+//        invoker = new NetworkLambda<P>(mode, call ? action : null);
 //        methodId++;
 //        return this;
 //    }

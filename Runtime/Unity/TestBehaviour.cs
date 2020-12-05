@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Multiplayer.API.Lambda;
+using Multiplayer.API.Payloads;
+using System;
 using UnityEngine;
 
 namespace Multiplayer.API
@@ -24,7 +26,7 @@ namespace Multiplayer.API
         private NetworkTransform networkTransform;
         private NetworkRigidbody2D networkRigidbody;
 
-        public NetworkSyncedTask<string> SendPayload;
+        public NetworkSyncedLambda<string> SendPayload;
 
         public NetworkRequest<string> SpawnItself;
 
@@ -49,7 +51,7 @@ namespace Multiplayer.API
         {
             networkTransform = new NetworkTransform(transform);
             networkRigidbody = new NetworkRigidbody2D(GetComponent<Rigidbody2D>());
-            SendPayload = new NetworkSyncedTask<string>(LocalSendPayload);
+            SendPayload = new NetworkSyncedLambda<string>(LocalSendPayload);
             SpawnItself = new NetworkRequest<string>(LocalSpawnItself);
 
         }

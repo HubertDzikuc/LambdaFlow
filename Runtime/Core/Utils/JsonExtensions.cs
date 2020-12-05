@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace Multiplayer.API
+namespace Multiplayer.API.Utils
 {
     public static class JsonExtensions
     {

@@ -1,20 +1,7 @@
-﻿using System;
-using UnityEngine;
+using System;
 
-namespace Multiplayer.API
+namespace Multiplayer.API.Payloads
 {
-    [Serializable]
-    public abstract class Payload { }
-
-    public enum ReplyStatus
-    {
-        Success,
-        ParsingError,
-        InvalidMode,
-        InvalidRequest,
-        InternalError,
-    }
-
     [Serializable]
     public class Reply : Payload
     {
