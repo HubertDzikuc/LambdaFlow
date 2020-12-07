@@ -1,12 +1,13 @@
 {
-  "name": "com.hubibubi.multiplayer",
+  "name": "com.hubi.lambdaflow",
   "version": "1.0.1",
   "displayName": "Multiplayer",
   "description": "This is an multiplayer package",
   "unity": "2020.1",
   "unityRelease": "3f1",
   "dependencies": {
-    "com.external.zeromq": "4.1.0"
+    "com.external.zeromq": "4.1.0",
+	"jillejr.newtonsoft.json-for-unity": "12.0.201"
  },
  "keywords": [
     "Networking"
