@@ -1,5 +1,6 @@
 ﻿using Multiplayer.API.Lambda;
 using Multiplayer.API.Payloads;
+using Newtonsoft.Json;
 using System;
 using UnityEngine;
 
@@ -12,7 +13,9 @@ namespace Multiplayer.API.Unity
         public float VX;
         public float VY;
 
+        [JsonIgnore]
         public Vector2 Velocity => new Vector2(VX, VY);
+        [JsonIgnore]
         public float AngularVelocity => AV;
 
         public Rigidbody2DPayload() { }

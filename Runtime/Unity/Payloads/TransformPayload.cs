@@ -1,5 +1,6 @@
 ﻿using Multiplayer.API.Lambda;
 using Multiplayer.API.Payloads;
+using Newtonsoft.Json;
 using System;
 using UnityEngine;
 
@@ -17,7 +18,9 @@ namespace Multiplayer.API.Unity
         public float Rz;
         public float Rw;
 
+        [JsonIgnore]
         public Vector3 Position => new Vector3(X, Y, Z);
+        [JsonIgnore]
         public Quaternion Rotation => new Quaternion(Rx, Ry, Rz, Rw);
 
         public TransformPayload() { }

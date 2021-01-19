@@ -1,4 +1,6 @@
-﻿using Multiplayer.API.Payloads;
+﻿using Multiplayer.API.Generics;
+using Multiplayer.API.Payloads;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -15,9 +17,9 @@ namespace Multiplayer.API.System
 
         private ICommandsHandler commandsHandler;
 
-        private List<Func<object, Reply>> registeredControllers = new List<Func<object, Reply>>();
+        private List<Func<object[], Reply>> registeredControllers = new List<Func<object[], Reply>>();
 
-        private Dictionary<NetworkMode, List<Action>> updateActionsDictionary = new Dictionary<NetworkMode, List<Action>>();
+        private Dictionary<NetworkMode, SafeEvent<Action>> updateActionsDictionary = new Dictionary<NetworkMode, SafeEvent<Action>>();
 
         private static int lambdaId = 0;
 
@@ -25,7 +27,7 @@ namespace Multiplayer.API.System
         {
             foreach (NetworkMode mode in (NetworkMode[])Enum.GetValues(typeof(NetworkMode)))
             {
-                updateActionsDictionary.Add(mode, new List<Action>());
+                updateActionsDictionary.Add(mode, new SafeEvent<Action>());
             }
         }
 
@@ -49,11 +51,12 @@ namespace Multiplayer.API.System
             }
             this.commandsHandler = commandsHandler;
             this.log = commandsHandler.Logger;
-            commandsHandler.UpdateEvent += Update;
-            commandsHandler.ReceiveEvent += Receive;
+            this.commandsHandler.UpdateEvent += Update;
+
+            this.commandsHandler.ReceiveEvent += Receive;
         }
 
-        public void Register(Func<object, Reply> receiver, out int lambdaId, out Func<int, object, bool> sender, out Action deregister)
+        public void Register(Func<object[], Reply> receiver, out int lambdaId, out Func<int, object[], bool> sender, out Action deregister)
         {
             registeredControllers.Add(receiver);
             lambdaId = NetworkHandler.lambdaId;
@@ -62,7 +65,7 @@ namespace Multiplayer.API.System
             sender = Send;
         }
 
-        public static void RunInUpdate(NetworkMode mode, Action action, UpdateTiming updateTiming)
+        public static void RunOnUpdate(NetworkMode mode, Action action, UpdateTiming updateTiming)
         {
             Instance.updateActionsDictionary[mode].Add(action);
         }
@@ -85,7 +88,7 @@ namespace Multiplayer.API.System
             {
                 try
                 {
-                    var command = JsonUtility.FromJson<Command>(message);
+                    var command = JsonConvert.DeserializeObject<Command>(message);
 
                     var id = command.Id;
                     var payload = command.Payload;
@@ -102,58 +105,50 @@ namespace Multiplayer.API.System
                         }
                         else
                         {
-                            Send("API", Reply.InvalidRequest);
+                            Send("API", Reply.InvalidRequest());
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     Log.LogError(ex);
-                    Send("API", Reply.ParsingError);
+                    Send("API", Reply.ParsingError());
                 }
             }
             else
             {
-                Send("API", Reply.InternalError);
+                Send("API", Reply.InternalError());
             }
         }
 
         private void Update()
         {
-            foreach (var action in updateActionsDictionary[Mode])
+            try
             {
-                try
-                {
-                    action.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    Log.LogError(ex);
-                }
+                updateActionsDictionary[Mode].Invoke();
+            }
+            catch (Exception ex)
+            {
+                Log.LogError(ex);
             }
         }
 
-        private bool Send(int id, object payload) => Send(id.ToString(), payload);
+        private bool Send(int id, params object[] payload) => Send(id.ToString(), payload);
 
-        private bool Send(string id, object payload)
+        private bool Send(string id, params object[] payload)
         {
             if (commandsHandler != null)
             {
                 var type = payload.GetType();
-                if (type.IsValueType || type.IsPrimitive || type == typeof(string))
-                {
-                    commandsHandler.Send(JsonUtility.ToJson(new Command(id, payload.ToString())));
-                }
-                else
-                {
-                    commandsHandler.Send(JsonUtility.ToJson(new Command(id, JsonUtility.ToJson(payload))));
-                }
+
+                commandsHandler.Send(JsonConvert.SerializeObject(new Command(id, payload)));
+
                 return true;
             }
             return false;
         }
 
-        private bool TryGetAction(string lambdaId, out Func<object, Reply> action)
+        private bool TryGetAction(string lambdaId, out Func<object[], Reply> action)
         {
             action = default;
             try
@@ -168,7 +163,7 @@ namespace Multiplayer.API.System
             }
         }
 
-        private bool TryGetAction(int lambdaId, out Func<object, Reply> action)
+        private bool TryGetAction(int lambdaId, out Func<object[], Reply> action)
         {
             action = default;
 

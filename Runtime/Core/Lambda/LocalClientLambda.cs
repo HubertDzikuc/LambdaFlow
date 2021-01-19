@@ -3,13 +3,9 @@ using System;
 
 namespace Multiplayer.API.Lambda
 {
-    public class LocalClientLambda<T1> : Lambda<T1>
+    public class LocalClientLambda<T> : Lambda<T> where T : Delegate
     {
-        public LocalClientLambda(Action<T1> action) : base(NetworkMode.Client, action) { }
+        public LocalClientLambda(T action) : base(NetworkMode.Client, action) { }
     }
 
-    public class LocalClientLambda<T1, T2> : Lambda<T1, T2>
-    {
-        public LocalClientLambda(Action<T1, T2> action) : base(NetworkMode.Client, action) { }
-    }
 }

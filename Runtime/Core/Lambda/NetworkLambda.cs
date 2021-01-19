@@ -2,31 +2,39 @@ using Multiplayer.API.Payloads;
 using Multiplayer.API.System;
 using Multiplayer.API.Utils;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+using Newtonsoft.Json;
 
 namespace Multiplayer.API.Lambda
 {
-    public abstract class AbstractNetworkLambda<T> : AbstractLambda<T>, IDisposable where T : BasePayload
+    public abstract class NetworkLambda<T> : Lambda<T>, IDisposable where T : Delegate
     {
         private readonly int Id;
-        private readonly Func<int, object, bool> Sender;
-
+        private readonly Func<int, object[], bool> Sender;
         private readonly Action Disposer;
+        protected virtual bool Active => NetworkHandler.IsMode(Mode);
 
-        protected AbstractNetworkLambda(NetworkMode mode, Delegate action) : base(mode, action)
+        private Type[] agrumentTypes;
+
+        protected NetworkLambda(NetworkMode mode, T action) : base(mode, action)
         {
             NetworkHandler.Instance.Register(Receive, out Id, out Sender, out Disposer);
+            agrumentTypes = ExpressionsUtils.ParameterTypesOfDelegate<T>().ToArray();
         }
 
-        protected virtual Reply AfterParse(T payload, out bool propagateArgument)
+        protected virtual Reply AfterParse(out bool propagateArgument, params object[] arguments)
         {
-            InvokeAction(payload);
+            InvokeAction(arguments);
 
             propagateArgument = false;
 
-            return Reply.Success;
+            return Reply.Success();
         }
 
-        protected void Send(object payload)
+        protected void Send(params object[] payload)
         {
             if (NetworkHandler.IsMode(NetworkMode.SinglePlayer) == false)
             {
@@ -34,32 +42,46 @@ namespace Multiplayer.API.Lambda
             }
         }
 
-        private Reply Receive(object payload)
+        private Reply Receive(object[] payload)
         {
-            if (payload.ToString().TryParseJson<T>(out var argument))
+            if (Active)
             {
-                var reply = AfterParse(argument, out bool propagateArgument);
+                List<object> initialArguments = new List<object>();
+                for (int i = 0; i < agrumentTypes.Length; i++)
+                {
+                    if (payload[i].ToString().TryParseJson(agrumentTypes[i], out var argument))
+                    {
+                        initialArguments.Add(argument);
+                    }
+                    else
+                    {
+                        return ParrsingError(Reply.ParsingError(), agrumentTypes[i], payload[i].ToString());
+                    }
+                }
+
+                object[] arguments = initialArguments.ToArray();
+                var reply = AfterParse(out bool propagateArgument, arguments);
 
                 if (propagateArgument)
                 {
-                    Send(payload);
+                    Send(arguments);
                 }
-
-                return ReplyInfo(reply, payload);
+                return reply;
             }
             else
             {
-                return ReplyInfo(Reply.ParsingError, payload);
+                return Reply.Success();
             }
         }
 
-        private Reply ReplyInfo(Reply reply, object argument)
+        private Reply ParrsingError(Reply reply, Type type, object payload)
         {
             switch (reply.ReplyStatus)
             {
                 case ReplyStatus.ParsingError:
-                    NetworkHandler.Log.LogWarning($"Couldn't parse data {argument} ({Mode} {ActionName})");
-                    return Reply.ParsingError;
+                    string message = $"Couldn't parse data {payload} to type {type} ({Mode} {ActionName})";
+                    NetworkHandler.Log.LogWarning(message);
+                    return Reply.ParsingError(message);
                 default:
                     return reply;
             }

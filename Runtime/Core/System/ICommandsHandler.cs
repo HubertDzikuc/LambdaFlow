@@ -1,4 +1,5 @@
 using System;
+using Multiplayer.API.Generics;
 
 namespace Multiplayer.API.System
 {

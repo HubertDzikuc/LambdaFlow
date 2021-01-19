@@ -3,8 +3,8 @@ using System;
 
 namespace Multiplayer.API.Lambda
 {
-    public class LocalServerLambda<T> : Lambda<T>
+    public class LocalServerLambda<T> : Lambda<T> where T : Delegate
     {
-        public LocalServerLambda(Action<T> action) : base(NetworkMode.Server, action) { }
+        public LocalServerLambda(T action) : base(NetworkMode.Server, action) { }
     }
 }
