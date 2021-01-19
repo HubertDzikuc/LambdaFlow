@@ -6,9 +6,9 @@ namespace Multiplayer.API.Payloads
     public class Command : Payload
     {
         public string Id;
-        public string Payload;
+        public object[] Payload;
 
-        public Command(string id, string payload)
+        public Command(string id, object[] payload)
         {
             Id = id;
             Payload = payload;

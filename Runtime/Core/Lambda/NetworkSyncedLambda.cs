@@ -4,42 +4,28 @@ using System;
 
 namespace Multiplayer.API.Lambda
 {
-    public class NetworkSyncedLambda<T1> : AbstractNetworkSyncedLambda<LambdaPayload<T1>>
+    public class NetworkSyncedLambda<T> : NetworkLambda<T> where T : Delegate
     {
-        public NetworkSyncedLambda(Action<T1> action) : base(action) { }
+        public NetworkSyncedLambda(T action) : base(NetworkMode.Server, action) { }
 
-        public void Invoke(T1 argument1) => InternalInvoke(new LambdaPayload<T1>(argument1));
-    }
+        protected override bool Active => NetworkHandler.Mode == NetworkMode.Client;
 
-    public class NetworkSyncedLambda<T1, T2> : AbstractNetworkSyncedLambda<LambdaPayload<T1, T2>>
-    {
-        public NetworkSyncedLambda(Action<T1, T2> action) : base(action) { }
-        public void Invoke(T1 argument1, T2 argument2) => InternalInvoke(new LambdaPayload<T1, T2>(argument1, argument2));
-    }
-
-    public abstract class AbstractNetworkSyncedLambda<T> : AbstractNetworkLambda<T> where T : LambdaPayload
-    {
-        protected AbstractNetworkSyncedLambda(Delegate action) : base(NetworkMode.Server, action) { }
-
-        protected override void InternalInvoke(T argument)
+        protected override void LocalInvoke(params object[] arguments)
         {
-            if (NetworkHandler.Mode == NetworkMode.Server)
+            if (Active)
             {
-                InvokeAction(argument);
-                Send(argument);
+                InvokeAction(arguments);
+                Send(arguments);
             }
         }
 
-        protected override Reply AfterParse(T payload, out bool propagateArgument)
+        protected override Reply AfterParse(out bool propagateArgument, params object[] arguments)
         {
-            if (NetworkHandler.Mode == NetworkMode.Client)
-            {
-                InvokeAction(payload);
-            }
+            InvokeAction(arguments);
 
             propagateArgument = false;
 
-            return Reply.Success;
+            return Reply.Success();
         }
     }
 }

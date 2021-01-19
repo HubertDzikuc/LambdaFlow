@@ -4,46 +4,28 @@ using System;
 
 namespace Multiplayer.API.Lambda
 {
-    public class NetworkRequestCustom<T> : AbstractNetworkRequest<T> where T : BasePayload
+    public class NetworkRequest<T> : NetworkLambda<T> where T : Delegate
     {
-        public NetworkRequestCustom(Action<T> action) : base(action) { }
+        public NetworkRequest(T action) : base(NetworkMode.Client, action) { }
 
-        public void Invoke(T payload) => InternalInvoke(payload);
-    }
+        protected override bool Active => true;
 
-    public class NetworkRequest<T1> : AbstractNetworkRequest<LambdaPayload<T1>>
-    {
-        public NetworkRequest(Action<T1> action) : base(action) { }
-
-        public void Invoke(T1 argument1) => InternalInvoke(new LambdaPayload<T1>(argument1));
-    }
-
-    public class NetworkRequest<T1, T2> : AbstractNetworkRequest<LambdaPayload<T1, T2>>
-    {
-        public NetworkRequest(Action<T1, T2> action) : base(action) { }
-        public void Invoke(T1 argument1, T2 argument2) => InternalInvoke(new LambdaPayload<T1, T2>(argument1, argument2));
-    }
-
-    public abstract class AbstractNetworkRequest<T> : AbstractNetworkLambda<T> where T : BasePayload
-    {
-        protected AbstractNetworkRequest(Delegate action) : base(NetworkMode.Client, action) { }
-
-        protected override void InternalInvoke(T argument)
+        protected override void LocalInvoke(params object[] arguments)
         {
             if (NetworkHandler.IsMode(NetworkMode.Host, NetworkMode.SinglePlayer))
             {
-                InvokeAction(argument);
+                InvokeAction(arguments);
             }
 
             if (NetworkHandler.Mode == NetworkMode.Client)
             {
-                Send(argument);
+                Send(arguments);
             }
         }
 
-        protected override Reply AfterParse(T argument, out bool propagateArgument)
+        protected override Reply AfterParse(out bool propagateArgument, params object[] arguments)
         {
-            InvokeAction(argument);
+            InvokeAction(arguments);
 
             propagateArgument = false;
             if (NetworkHandler.Mode == NetworkMode.Server)
@@ -51,7 +33,7 @@ namespace Multiplayer.API.Lambda
                 propagateArgument = true;
             }
 
-            return Reply.Success;
+            return Reply.Success();
         }
     }
 }

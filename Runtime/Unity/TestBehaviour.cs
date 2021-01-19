@@ -1,6 +1,7 @@
 ﻿using Multiplayer.API.Lambda;
 using Multiplayer.API.Payloads;
 using Multiplayer.API.Unity.Lambda;
+using System;
 using UnityEngine;
 
 namespace Multiplayer.API.Unity.Tests
@@ -26,13 +27,13 @@ namespace Multiplayer.API.Unity.Tests
         private NetworkTransform networkTransform;
         private NetworkRigidbody2D networkRigidbody;
 
-        public NetworkSyncedLambda<string> SendPayload;
+        public NetworkCommand<Action<string, int>> SendPayload;
 
-        public NetworkRequest<string> SpawnItself;
+        public NetworkRequest<Action<string>> SpawnItself;
 
-        private void LocalSendPayload(string str)
+        private void LocalSendPayload(string str, int count)
         {
-            Debug.Log($"{nameof(LocalSendPayload)} {str}");
+            Debug.Log($"{nameof(LocalSendPayload)} {str} {count}");
         }
 
         private void LocalSpawnItself(string str)
@@ -51,16 +52,15 @@ namespace Multiplayer.API.Unity.Tests
         {
             networkTransform = new NetworkTransform(transform);
             networkRigidbody = new NetworkRigidbody2D(GetComponent<Rigidbody2D>());
-            SendPayload = new NetworkSyncedLambda<string>(LocalSendPayload);
-            SpawnItself = new NetworkRequest<string>(LocalSpawnItself);
-
-            //SpawnItself.Invoke("Spawn new class");
+            SendPayload = new NetworkCommand<Action<string, int>>(LocalSendPayload);
+            SpawnItself = new NetworkRequest<Action<string>>(LocalSpawnItself);
+            SpawnItself.Invoke("Spawn new class");
         }
 
         private int i = 0;
         private void Update()
         {
-            SendPayload.Invoke($"Invoking {nameof(SendPayload)} {i}");
+            SendPayload.Invoke($"Invoking {nameof(SendPayload)} {i}", 14214124);
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Laparo.Sim.ZeroMQ;
+using Multiplayer.API.Generics;
 using Multiplayer.API.System;
 using UnityEngine;
 using ZeroMQ;
@@ -30,12 +31,12 @@ namespace Multiplayer.API
     public class ZeroMQApi : MonoBehaviour, ICommandsHandler
     {
         public NetworkMode Mode => mode;
-
         public event Action UpdateEvent;
+
         public event Action<string> ReceiveEvent;
 
-        public ILog Logger => logger;
-        private ILog logger = new UnityDebugger();
+        public ILog Logger { get; } = new UnityDebugger();
+
 
         [SerializeField]
         private NetworkMode mode;
